@@ -1,32 +1,20 @@
-name: Build Fabric Mod
+name: Build
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
-
+    runs-on: ubuntu-latest
     steps:
-      # Checkout your repository
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      # Set up Java 17
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Build with Gradle
-
-  # You may pin to the exact commit or the version.
-  # uses: gradle/actions@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2
-        uses: gradle/actions@v5.0.0
-          
+    - name: Checkout sources
+      uses: actions/checkout@v4
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: 17
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v5
+    - name: Build with Gradle
+      run: ./gradlew build
