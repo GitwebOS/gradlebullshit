@@ -24,23 +24,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Cache Gradle dependencies
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
+      - name: Build with Gradle
 
-      # Build using Gradle wrapper
-      - name: Build Mod
-        run: ./gradlew build --no-daemon
-
-      # Upload the built JAR
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: beer-mod-jar
-          path: build/libs/beer-0.1.0.jar
+  # You may pin to the exact commit or the version.
+  # uses: gradle/actions@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2
+        uses: gradle/actions@v5.0.0
+          
