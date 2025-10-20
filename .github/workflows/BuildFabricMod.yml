@@ -6,6 +6,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # isolate Gradle cache to a runner temp directory to avoid stale/locked loom caches
+    env:
+      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-cache
+
     steps:
     - name: Checkout sources
       uses: actions/checkout@v4
@@ -37,6 +41,17 @@ jobs:
       with:
         gradle-version: '8.3'
 
+    - name: Clean any stale Gradle / Loom caches
+      if: steps.find.outputs.project_root != 'NO'
+      run: |
+        echo "GRADLE_USER_HOME=$GRADLE_USER_HOME"
+        # remove any stale lock or loom cache in the isolated cache and project .gradle
+        rm -rf "$GRADLE_USER_HOME"/*
+        rm -rf "${{ steps.find.outputs.project_root }}/.gradle"
+        # optional quick check to see fabric meta endpoint is reachable
+        echo "Checking Fabric meta endpoint..."
+        curl -sSf https://meta.fabricmc.net/v2/versions/game | head -c 200 || true
+
     - name: Generate Gradle wrapper (ephemeral)
       if: steps.find.outputs.project_root != 'NO'
       working-directory: ${{ steps.find.outputs.project_root }}
@@ -49,11 +64,14 @@ jobs:
     - name: Print versions (debug)
       if: steps.find.outputs.project_root != 'NO'
       run: |
+        echo "Java:"
         java -version || true
+        echo "System gradle (for debug):"
         gradle --version || true
+        echo "Generated wrapper:"
         ${{ steps.find.outputs.project_root }}/gradlew --version || true
 
-    - name: Build with Gradle wrapper
+    - name: Build with Gradle wrapper (refresh deps + stacktrace)
       if: steps.find.outputs.project_root != 'NO'
       working-directory: ${{ steps.find.outputs.project_root }}
-      run: ./gradlew build --no-daemon --no-parallel
+      run: ./gradlew build --no-daemon --no-parallel --refresh-dependencies --stacktrace
