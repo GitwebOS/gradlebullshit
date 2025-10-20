@@ -7,15 +7,38 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-# .github/workflows/BuildFabricMod.yml at ref ce52fe03306e45af04bbb7b22000e39516f8f017
+    - name: Checkout sources
+      uses: actions/checkout@v4
+    - name: Find Gradle project root
+      id: find
+      run: |
+        set -e
+        FILE=$(git ls-files | grep -E '(^|/)(settings.gradle|settings.gradle.kts|build.gradle|build.gradle.kts)$' | head -n1 || true)
+        if [ -z "$FILE" ]; then
+          echo "project_root=NO" >> $GITHUB_OUTPUT
+          echo "No Gradle build files found in repository"
+          exit 0
+        fi
+        DIR=$(dirname "$FILE")
+        echo "project_root=$DIR" >> $GITHUB_OUTPUT
+        echo "Found Gradle project at '$DIR'"
+    - name: Setup Java
+      if: steps.find.outputs.project_root != 'NO'
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: 17
     - name: Setup Gradle
+      if: steps.find.outputs.project_root != 'NO'
       uses: gradle/actions/setup-gradle@v5
-
     - name: Generate Gradle wrapper
-      run: gradle wrapper
-
+      if: steps.find.outputs.project_root != 'NO'
+      working-directory: ${{ steps.find.outputs.project_root }}
+      run: gradle wrapper --gradle-version 8.2
     - name: Make wrapper executable
-      run: chmod +x ./gradlew
-
+      if: steps.find.outputs.project_root != 'NO'
+      run: chmod +x ${{ steps.find.outputs.project_root }}/gradlew
     - name: Build with Gradle wrapper
+      if: steps.find.outputs.project_root != 'NO'
+      working-directory: ${{ steps.find.outputs.project_root }}
       run: ./gradlew build
