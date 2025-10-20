@@ -7,14 +7,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v4
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: 17
+# .github/workflows/BuildFabricMod.yml at ref ce52fe03306e45af04bbb7b22000e39516f8f017
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v5
-    - name: Build with Gradle
+
+    - name: Generate Gradle wrapper
+      run: gradle wrapper
+
+    - name: Make wrapper executable
+      run: chmod +x ./gradlew
+
+    - name: Build with Gradle wrapper
       run: ./gradlew build
