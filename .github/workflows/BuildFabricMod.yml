@@ -9,6 +9,7 @@ jobs:
     steps:
     - name: Checkout sources
       uses: actions/checkout@v4
+
     - name: Find Gradle project root
       id: find
       run: |
@@ -20,25 +21,32 @@ jobs:
           exit 0
         fi
         DIR=$(dirname "$FILE")
-        echo "project_root=$DIR" >> $GITHUB_OUTPUT
-        echo "Found Gradle project at '$DIR'"
+        echo "project_root=${DIR}" >> $GITHUB_OUTPUT
+        echo "Found Gradle project at '${DIR}'"
+
     - name: Setup Java
       if: steps.find.outputs.project_root != 'NO'
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: 17
-    - name: Setup Gradle
+        java-version: '17'
+
+    - name: Setup Gradle (for wrapper generation)
       if: steps.find.outputs.project_root != 'NO'
       uses: gradle/actions/setup-gradle@v5
-    - name: Generate Gradle wrapper
+      with:
+        gradle-version: '7.6'
+
+    - name: Generate Gradle wrapper (ephemeral)
       if: steps.find.outputs.project_root != 'NO'
       working-directory: ${{ steps.find.outputs.project_root }}
-      run: gradle wrapper --gradle-version 8.2
+      run: gradle wrapper --gradle-version 7.6 --distribution-type all
+
     - name: Make wrapper executable
       if: steps.find.outputs.project_root != 'NO'
       run: chmod +x ${{ steps.find.outputs.project_root }}/gradlew
+
     - name: Build with Gradle wrapper
       if: steps.find.outputs.project_root != 'NO'
       working-directory: ${{ steps.find.outputs.project_root }}
-      run: ./gradlew build
+      run: ./gradlew build --no-daemon
