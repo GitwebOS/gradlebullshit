@@ -1,4 +1,4 @@
-name: Build Fabric Mod Without Wrapper
+name: Build Fabric Mod
 
 on:
   push:
@@ -13,80 +13,30 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Set up Java 17 (required by Fabric Loom)
+      # 2️⃣ Set up Java 17
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ Install Gradle 8.3 in CI
-      - name: Install Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 8.3
+      # 3️⃣ Ensure Gradle wrapper is executable
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
 
-      # 4️⃣ Create build.gradle dynamically
-      - name: Create build.gradle
-        run: |
-          cat > build.gradle << 'EOF'
-          buildscript {
-              repositories {
-                  mavenCentral()
-                  maven { url = 'https://maven.fabricmc.net/' }
-              }
-              dependencies {
-                  classpath 'net.fabricmc:fabric-loom:1.4-SNAPSHOT'
-              }
-          }
+      # 4️⃣ Optional: verify Gradle version (wrapper must be 8.3)
+      - name: Check Gradle version
+        run: ./gradlew --version
 
-          apply plugin: 'fabric-loom'
-          apply plugin: 'java'
-
-          group = 'com.beer'
-          version = '0.1.0'
-
-          repositories {
-              mavenCentral()
-              maven { url = 'https://maven.fabricmc.net/' }
-          }
-
-          dependencies {
-              minecraft "com.mojang:minecraft:1.20.1"
-              mappings "net.fabricmc:yarn:1.20.1+build.10:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.15.10"
-          }
-
-          java {
-              toolchain {
-                  languageVersion = JavaLanguageVersion.of(17)
-              }
-              withSourcesJar()
-          }
-
-          tasks.withType(JavaCompile).configureEach {
-              options.encoding = 'UTF-8'
-          }
-
-          tasks.withType(Jar).configureEach {
-              archiveBaseName.set('beer')
-              archiveVersion.set('0.1.0')
-          }
-          EOF
-
-      # 5️⃣ Create settings.gradle
-      - name: Create settings.gradle
-        run: echo "rootProject.name = 'beer'" > settings.gradle
-
-      # 6️⃣ Build the mod with refresh dependencies
+      # 5️⃣ Build the mod (refresh dependencies to avoid cached JSON issues)
       - name: Build Mod
-        run: gradle build --no-daemon --refresh-dependencies
+        run: ./gradlew build --no-daemon --refresh-dependencies
 
-      # 7️⃣ Upload the compiled JAR
+      # 6️⃣ Upload the built JAR
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
