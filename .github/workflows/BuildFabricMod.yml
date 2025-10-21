@@ -1,115 +1,42 @@
-name: Build
+name: Build Fabric Mod
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v4
+      # 1️⃣ Checkout your repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Find Gradle project root
-      id: find
-      run: |
-        set -e
-        FILE=$(git ls-files | grep -E '(^|/)(settings.gradle|settings.gradle.kts|build.gradle|build.gradle.kts)$' | head -n1 || true)
-        if [ -z "$FILE" ]; then
-          echo "project_root=NO" >> $GITHUB_OUTPUT
-          echo "No Gradle build files found in repository"
-          exit 0
-        fi
-        DIR=$(dirname "$FILE")
-        echo "project_root=${DIR}" >> $GITHUB_OUTPUT
-        echo "Found Gradle project at '${DIR}'"
+      # 2️⃣ Set up Java 17
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
 
-    - name: Set GRADLE_USER_HOME to isolated temp cache
-      if: steps.find.outputs.project_root != 'NO'
-      run: |
-        echo "GRADLE_USER_HOME=$RUNNER_TEMP/gradle-cache" >> $GITHUB_ENV
-        echo "GRADLE_USER_HOME set to $RUNNER_TEMP/gradle-cache"
+      # 3️⃣ Install Gradle 8.3
+      - name: Set up Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.3
 
-    - name: Print Fabric meta endpoints (diagnostic)
-      if: steps.find.outputs.project_root != 'NO'
-      run: |
-        set -euo pipefail
-        echo "Checking meta.fabricmc.net responses (truncated):"
-        for url in \
-          "https://meta.fabricmc.net/v2/versions/game" \
-          "https://meta.fabricmc.net/v2/versions/loader" \
-          "https://meta.fabricmc.net/v2/versions/mappings"; do
-          echo "---- $url ----"
-          for i in 1 2 3; do
-            if curl -sSf --max-time 15 "$url" | head -c 400; then
-              echo ""; break
-            else
-              echo "failed attempt $i for $url, sleeping"
-              sleep $((i * 2))
-            fi
-          done
-        done
+      # 4️⃣ Build the mod
+      - name: Build Mod
+        run: gradle build --no-daemon
 
-    - name: Setup Java
-      if: steps.find.outputs.project_root != 'NO'
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Setup Gradle (for wrapper generation)
-      if: steps.find.outputs.project_root != 'NO'
-      uses: gradle/actions/setup-gradle@v5
-      with:
-        gradle-version: '8.3'
-
-    - name: Clean any stale Gradle / Loom caches
-      if: steps.find.outputs.project_root != 'NO'
-      run: |
-        echo "GRADLE_USER_HOME=$GRADLE_USER_HOME"
-        rm -rf "$GRADLE_USER_HOME"/*
-        rm -rf "${{ steps.find.outputs.project_root }}/.gradle"
-
-    - name: Generate Gradle wrapper (ephemeral)
-      if: steps.find.outputs.project_root != 'NO'
-      working-directory: ${{ steps.find.outputs.project_root }}
-      run: gradle wrapper --gradle-version 8.3 --distribution-type all
-
-    - name: Make wrapper executable
-      if: steps.find.outputs.project_root != 'NO'
-      run: chmod +x ${{ steps.find.outputs.project_root }}/gradlew
-
-    - name: Print versions (debug)
-      if: steps.find.outputs.project_root != 'NO'
-      working-directory: ${{ steps.find.outputs.project_root }}
-      run: |
-        echo "Java:"
-        java -version || true
-        echo "System gradle (for debug):"
-        gradle --version || true
-        echo "Generated wrapper:"
-        ./gradlew --version || true
-
-    - name: Run Gradle build with debug + retry
-      if: steps.find.outputs.project_root != 'NO'
-      working-directory: ${{ steps.find.outputs.project_root }}
-      run: |
-        set -eu
-        attempt=0
-        max_attempts=2
-        until [ $attempt -ge $max_attempts ]; do
-          attempt=$((attempt+1))
-          echo "Gradle attempt $attempt/$max_attempts"
-          ./gradlew build --no-daemon --no-parallel --refresh-dependencies --stacktrace --info && break
-          echo "Gradle failed on attempt $attempt"
-          # clear caches and retry (helps transient or corrupted-cache issues)
-          rm -rf "$GRADLE_USER_HOME"/*
-          rm -rf .gradle
-          sleep $((attempt * 5))
-          if [ $attempt -ge $max_attempts ]; then
-            echo "All attempts failed, exiting with non-zero"
-            exit 1
-          fi
-        done
+      # 5️⃣ Upload the compiled JAR
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: beer-mod-jar
+          path: build/libs/beer-0.1.0.jar
