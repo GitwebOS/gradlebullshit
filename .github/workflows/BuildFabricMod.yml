@@ -47,6 +47,6 @@ jobs:
           tag: v${{ github.run_number }}
           name: "Beer Mod v${{ github.run_number }}"
           body: "Automated release from GitHub Actions"
-          files: build/libs/beer-0.1.0.jar
+          artifacts: build/libs/beer-0.1.0.jar
           draft: false
           prerelease: false
