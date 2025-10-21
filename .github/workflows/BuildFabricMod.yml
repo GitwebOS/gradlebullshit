@@ -2,6 +2,7 @@ name: Build
 
 on:
   push:
+  pull_request:
 
 jobs:
   build:
@@ -31,6 +32,26 @@ jobs:
         echo "GRADLE_USER_HOME=$RUNNER_TEMP/gradle-cache" >> $GITHUB_ENV
         echo "GRADLE_USER_HOME set to $RUNNER_TEMP/gradle-cache"
 
+    - name: Print Fabric meta endpoints (diagnostic)
+      if: steps.find.outputs.project_root != 'NO'
+      run: |
+        set -euo pipefail
+        echo "Checking meta.fabricmc.net responses (truncated):"
+        for url in \
+          "https://meta.fabricmc.net/v2/versions/game" \
+          "https://meta.fabricmc.net/v2/versions/loader" \
+          "https://meta.fabricmc.net/v2/versions/mappings"; do
+          echo "---- $url ----"
+          for i in 1 2 3; do
+            if curl -sSf --max-time 15 "$url" | head -c 400; then
+              echo ""; break
+            else
+              echo "failed attempt $i for $url, sleeping"
+              sleep $((i * 2))
+            fi
+          done
+        done
+
     - name: Setup Java
       if: steps.find.outputs.project_root != 'NO'
       uses: actions/setup-java@v4
@@ -50,7 +71,6 @@ jobs:
         echo "GRADLE_USER_HOME=$GRADLE_USER_HOME"
         rm -rf "$GRADLE_USER_HOME"/*
         rm -rf "${{ steps.find.outputs.project_root }}/.gradle"
-        curl -sSf https://meta.fabricmc.net/v2/versions/game | head -c 200 || true
 
     - name: Generate Gradle wrapper (ephemeral)
       if: steps.find.outputs.project_root != 'NO'
@@ -69,9 +89,27 @@ jobs:
         java -version || true
         echo "System gradle (for debug):"
         gradle --version || true
+        echo "Generated wrapper:"
         ./gradlew --version || true
 
-    - name: Build with Gradle wrapper (refresh deps + stacktrace)
+    - name: Run Gradle build with debug + retry
       if: steps.find.outputs.project_root != 'NO'
       working-directory: ${{ steps.find.outputs.project_root }}
-      run: ./gradlew build --no-daemon --no-parallel --refresh-dependencies --stacktrace
+      run: |
+        set -eu
+        attempt=0
+        max_attempts=2
+        until [ $attempt -ge $max_attempts ]; do
+          attempt=$((attempt+1))
+          echo "Gradle attempt $attempt/$max_attempts"
+          ./gradlew build --no-daemon --no-parallel --refresh-dependencies --stacktrace --info && break
+          echo "Gradle failed on attempt $attempt"
+          # clear caches and retry (helps transient or corrupted-cache issues)
+          rm -rf "$GRADLE_USER_HOME"/*
+          rm -rf .gradle
+          sleep $((attempt * 5))
+          if [ $attempt -ge $max_attempts ]; then
+            echo "All attempts failed, exiting with non-zero"
+            exit 1
+          fi
+        done
