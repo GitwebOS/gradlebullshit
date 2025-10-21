@@ -1,7 +1,10 @@
-name: Build Fabric Mod From Scratch
+name: Build Fabric Mod Without Wrapper
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -10,7 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      # 1️⃣ Checkout the repo
+      # 1️⃣ Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v3
 
@@ -21,7 +24,13 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ Create build.gradle dynamically
+      # 3️⃣ Install Gradle 8.3 in CI
+      - name: Install Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.3
+
+      # 4️⃣ Create build.gradle dynamically
       - name: Create build.gradle
         run: |
           cat > build.gradle << 'EOF'
@@ -69,19 +78,13 @@ jobs:
           }
           EOF
 
-      # 4️⃣ Create settings.gradle
+      # 5️⃣ Create settings.gradle
       - name: Create settings.gradle
         run: echo "rootProject.name = 'beer'" > settings.gradle
 
-      # 5️⃣ Generate Gradle wrapper dynamically
-      - name: Generate Gradle Wrapper
-        run: |
-          gradle wrapper --gradle-version 8.3
-          chmod +x gradlew
-
-      # 6️⃣ Build mod with refresh dependencies
+      # 6️⃣ Build the mod with refresh dependencies
       - name: Build Mod
-        run: ./gradlew build --no-daemon --refresh-dependencies
+        run: gradle build --no-daemon --refresh-dependencies
 
       # 7️⃣ Upload the compiled JAR
       - name: Upload Artifact
