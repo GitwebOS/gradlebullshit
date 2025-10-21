@@ -1,4 +1,4 @@
-name: Build Fabric Mod
+name: Build and Release Fabric Mod
 
 on:
   push:
@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      # 1️⃣ Checkout the repository
+      # 1️⃣ Checkout repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
       # 2️⃣ Set up Java 17
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
@@ -25,22 +25,18 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
-      # 4️⃣ Optional: verify Gradle version (wrapper must be 8.3)
-      - name: Check Gradle version
-        run: ./gradlew --version
-
-      # 5️⃣ Build the mod (refresh dependencies to avoid cached JSON issues)
+      # 4️⃣ Build the mod with fresh dependencies
       - name: Build Mod
         run: ./gradlew build --no-daemon --refresh-dependencies
 
-      # 6️⃣ Upload the built JAR
+      # 5️⃣ Upload the built JAR as artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: beer-mod-jar
           path: build/libs/beer-0.1.0.jar
 
-      # 6️⃣ Create GitHub Release and attach JAR
+      # 6️⃣ Create GitHub Release with the mod JAR
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
