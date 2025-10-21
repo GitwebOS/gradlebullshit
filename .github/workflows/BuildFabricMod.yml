@@ -21,22 +21,26 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ Ensure Gradle wrapper is executable
+      # 3️⃣ Verify Java version
+      - name: Check Java version
+        run: java -version
+
+      # 4️⃣ Make Gradle wrapper executable
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
-      # 4️⃣ Build the mod with fresh dependencies
+      # 5️⃣ Build the mod (with fresh dependencies)
       - name: Build Mod
         run: ./gradlew build --no-daemon --refresh-dependencies
 
-      # 5️⃣ Upload the built JAR as artifact
+      # 6️⃣ Upload the built JAR as artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: beer-mod-jar
           path: build/libs/beer-0.1.0.jar
 
-      # 6️⃣ Create GitHub Release with the mod JAR
+      # 7️⃣ Create GitHub Release and attach the JAR
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
