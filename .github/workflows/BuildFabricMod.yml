@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
@@ -42,3 +39,14 @@ jobs:
         with:
           name: beer-mod-jar
           path: build/libs/beer-0.1.0.jar
+
+      # 6️⃣ Create GitHub Release and attach JAR
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ github.run_number }}
+          name: "Beer Mod v${{ github.run_number }}"
+          body: "Automated release from GitHub Actions"
+          files: build/libs/beer-0.1.0.jar
+          draft: false
+          prerelease: false
